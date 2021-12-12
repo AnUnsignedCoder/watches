@@ -1,0 +1,5 @@
+".\Objects\STARTUP.obj",
+".\Objects\电子表.obj",
+".\Objects\ds1302.obj" 
+TO ".\Objects\电子表" 
+PRINT(".\Listings\电子表.m51") RAMSIZE(256) 

@@ -1,0 +1,703 @@
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE ______
+OBJECT MODULE PLACED IN .\Objects\µç×Ó±í.obj
+COMPILER INVOKED BY: C:\software\C51\BIN\C51.EXE µç×Ó±í.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\µ
+                    -ç×Ó±í.lst) TABS(5) OBJECT(.\Objects\µç×Ó±í.obj)
+
+line level    source
+
+   1          // Mode_Bit 0,1,2,3 shijian  miaobiao  naozhong  tiaoshijan
+   2          
+   3          
+   4          
+   5          void Dispaly_Select_Timer();
+   6          void Display_Normal_Time();   
+   7          void Display_Normal_Data();
+   8          void Display_Normal_Aralm();
+   9          void Dispaly_Select_aralm();
+  10          void Display_Stop_Watch();
+  11          
+  12          
+  13          
+  14          #include "reg52.h"
+  15          #include "absacc.h"
+  16          #include "ds1302.h"
+  17          
+  18          sbit S7 = P3^0;
+  19          sbit S6 = P3^1;
+  20          sbit S5 = P3^2;
+  21          
+  22          
+  23          unsigned int Stop_Watch_Min;
+  24          unsigned int Stop_Watch_Second;
+  25          unsigned int Stop_Watch_Millisecond;
+  26          unsigned int Timer_Bit = 0;
+  27          unsigned int Blink_Bit = 0;
+  28          unsigned int Count;
+  29          unsigned int Stopwatch_Bit = 0;
+  30          unsigned int Buzzer_Bit = 0;
+  31          unsigned int Mode_Bit;
+  32          
+  33          unsigned char code Duanma[11]={0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F,0x40};
+  34          
+  35          unsigned char code DS1302_Write[7] = {0x80,0x82,0x84,0x86,0x88,0x8a,0x8c};
+  36          unsigned char code DS1302_Read[7] = {0x81,0x83,0x85,0x87,0x89,0x8b,0x8d};
+  37          
+  38          unsigned char  Init_Time[7] = {0x20,0x59,0x23,0x04,0x12,0x06,0x21};   //2021 12 6 data6 23 59 20 
+  39          unsigned char  Init_Aralm[3] = {0x00,0x00,0x00};   //aralm clock
+  40          
+  41          //====================================================//Init_System
+  42          
+  43          void Init_System()
+  44          {
+  45   1      XBYTE[0x8000] = 0xff;
+  46   1      XBYTE[0xa000] = 0x00;
+  47   1      XBYTE[0x0000] = 0x00;
+  48   1      }
+  49          
+  50          void Display_SMG_Bit(unsigned int pos , unsigned char value)
+  51          {
+  52   1      XBYTE[0xe000] = 0xff;
+  53   1      XBYTE[0xc000] = 0x01 << pos;
+  54   1      XBYTE[0xe000] = value;
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 2   
+
+  55   1      XBYTE[0x0000] = 0x00;    
+  56   1      }
+  57          
+  58          //====================================================//
+  59          
+  60          //====================================================//DS1302
+  61          
+  62          void Init_DS1302()
+  63          {
+  64   1      unsigned int i;
+  65   1      Write_Ds1302_Byte(0x8e,0x00);
+  66   1           for(i = 0 ; i<7 ; i++)
+  67   1           {
+  68   2           Write_Ds1302_Byte( DS1302_Write[i],Init_Time[i] );
+  69   2           }
+  70   1      Write_Ds1302_Byte(0x8e,0x80);
+  71   1      }
+  72          
+  73          void Read_Ds1302()
+  74          {
+  75   1      unsigned int i;
+  76   1      for(i=0;i<7;i++)
+  77   1           {
+  78   2           Init_Time[i] = Read_Ds1302_Byte(DS1302_Read[i]);
+  79   2           }
+  80   1      }
+  81          
+  82          //====================================================//
+  83          
+  84          //====================================================//Delay
+  85          
+  86          void Delay_SMG(unsigned int i)
+  87          {
+  88   1      while(i--);
+  89   1      }
+  90          
+  91          void Delay_Scan(unsigned int i)
+  92          {
+  93   1           while(i--)
+  94   1           {
+  95   2           Dispaly_Select_Timer();
+  96   2           Display_Normal_Time();   
+  97   2           Display_Normal_Data();   
+  98   2           Display_Normal_Aralm();
+  99   2           Dispaly_Select_aralm();
+ 100   2           Display_Stop_Watch();
+ 101   2           }
+ 102   1      }
+ 103          
+ 104          //====================================================//
+ 105          
+ 106          
+ 107          
+ 108          
+ 109          
+ 110          
+ 111          //====================================================//mode 0 Dispaly
+ 112          
+ 113          void Display_Normal_Data()
+ 114          {
+ 115   1           if(Mode_Bit == 0 && S7 == 0 && S6 != 0 && Buzzer_Bit != 1)
+ 116   1           {
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 3   
+
+ 117   2           Display_SMG_Bit(0,~Duanma[Init_Time[6]/16]);
+ 118   2           Delay_SMG(100);
+ 119   2           Display_SMG_Bit(1,~Duanma[Init_Time[6]%16]);
+ 120   2           Delay_SMG(100);
+ 121   2           Display_SMG_Bit(2,~Duanma[10]);
+ 122   2           Delay_SMG(100);
+ 123   2           Display_SMG_Bit(3,~Duanma[Init_Time[4]/16]);
+ 124   2           Delay_SMG(100);
+ 125   2           Display_SMG_Bit(4,~Duanma[Init_Time[4]%16]);
+ 126   2           Delay_SMG(100);
+ 127   2           Display_SMG_Bit(5,~Duanma[10]);
+ 128   2           Delay_SMG(100);
+ 129   2           Display_SMG_Bit(6,~Duanma[Init_Time[3]/16]);
+ 130   2           Delay_SMG(100);
+ 131   2           Display_SMG_Bit(7,~Duanma[Init_Time[3]%16]);
+ 132   2           Delay_SMG(100);
+ 133   2           Display_SMG_Bit(8,0x00);
+ 134   2           Delay_SMG(100);
+ 135   2           }
+ 136   1      }
+ 137          
+ 138          void Display_Normal_Aralm()
+ 139          {
+ 140   1           if(Mode_Bit == 0 && S6 == 0 && S7 != 0)
+ 141   1           {
+ 142   2           Display_SMG_Bit(0,~Duanma[Init_Aralm[2]/16]);
+ 143   2           Delay_SMG(100);
+ 144   2           Display_SMG_Bit(1,~Duanma[Init_Aralm[2]%16]);
+ 145   2           Delay_SMG(100);
+ 146   2           Display_SMG_Bit(2,~Duanma[10]);
+ 147   2           Delay_SMG(100);
+ 148   2           Display_SMG_Bit(3,~Duanma[Init_Aralm[1]/16]);
+ 149   2           Delay_SMG(100);
+ 150   2           Display_SMG_Bit(4,~Duanma[Init_Aralm[1]%16]);
+ 151   2           Delay_SMG(100);
+ 152   2           Display_SMG_Bit(5,~Duanma[10]);
+ 153   2           Delay_SMG(100);
+ 154   2           Display_SMG_Bit(6,~Duanma[Init_Aralm[0]/16]);
+ 155   2           Delay_SMG(100);
+ 156   2           Display_SMG_Bit(7,~Duanma[Init_Aralm[0]%16]);
+ 157   2           Delay_SMG(100);
+ 158   2           Display_SMG_Bit(8,0x00);
+ 159   2           Delay_SMG(100);
+ 160   2           }
+ 161   1      }
+ 162          
+ 163          void Display_Normal_Time()
+ 164          {
+ 165   1           if((Mode_Bit == 0 && S7 != 0 && S6 != 0) || Buzzer_Bit == 1)
+ 166   1           {
+ 167   2           Display_SMG_Bit(0,~Duanma[Init_Time[2]/16]);
+ 168   2           Delay_SMG(100);
+ 169   2           Display_SMG_Bit(1,~Duanma[Init_Time[2]%16]);
+ 170   2           Delay_SMG(100);
+ 171   2           Display_SMG_Bit(2,~Duanma[10]);
+ 172   2           Delay_SMG(100);
+ 173   2           Display_SMG_Bit(3,~Duanma[Init_Time[1]/16]);
+ 174   2           Delay_SMG(100);
+ 175   2           Display_SMG_Bit(4,~Duanma[Init_Time[1]%16]);
+ 176   2           Delay_SMG(100);
+ 177   2           Display_SMG_Bit(5,~Duanma[10]);
+ 178   2           Delay_SMG(100);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 4   
+
+ 179   2           Display_SMG_Bit(6,~Duanma[Init_Time[0]/16]);
+ 180   2           Delay_SMG(100);
+ 181   2           Display_SMG_Bit(7,~Duanma[Init_Time[0]%16]);
+ 182   2           Delay_SMG(100);
+ 183   2           Display_SMG_Bit(8,0x00);
+ 184   2           Delay_SMG(100);
+ 185   2           }
+ 186   1      }
+ 187          
+ 188          //====================================================//
+ 189          
+ 190          //====================================================//Mode 1 Stop Watch
+ 191          
+ 192          void Display_Stop_Watch()
+ 193          {
+ 194   1           if(Mode_Bit == 1)
+ 195   1           {
+ 196   2           Display_SMG_Bit(0,~Duanma[Stop_Watch_Min / 10] );
+ 197   2           Delay_SMG(100);
+ 198   2           Display_SMG_Bit(1,~Duanma[Stop_Watch_Min %10] );
+ 199   2           Delay_SMG(100);
+ 200   2           Display_SMG_Bit(2,~Duanma[10]);
+ 201   2           Delay_SMG(100);
+ 202   2           Display_SMG_Bit(3,~Duanma[Stop_Watch_Second / 10] );
+ 203   2           Delay_SMG(100);
+ 204   2           Display_SMG_Bit(4,~Duanma[Stop_Watch_Second % 10] );
+ 205   2           Delay_SMG(100);
+ 206   2           Display_SMG_Bit(5,~Duanma[10]);
+ 207   2           Delay_SMG(100);
+ 208   2           Display_SMG_Bit(6,~Duanma[Stop_Watch_Millisecond / 10]);
+ 209   2           Delay_SMG(100);
+ 210   2           Display_SMG_Bit(7,~Duanma[Stop_Watch_Millisecond % 10] );
+ 211   2           Delay_SMG(100);
+ 212   2           Display_SMG_Bit(8,0x00);
+ 213   2           Delay_SMG(100);
+ 214   2           }
+ 215   1      }
+ 216          
+ 217          //====================================================//
+ 218          
+ 219          //====================================================//Mode 2  aralm clock
+ 220          
+ 221          void Dispaly_Select_aralm()
+ 222          {
+ 223   1           if(Mode_Bit == 2)
+ 224   1           {
+ 225   2                switch(Timer_Bit)
+ 226   2                {
+ 227   3                     case 0:
+ 228   3                     {
+ 229   4                     if(Blink_Bit == 0)
+ 230   4                          {
+ 231   5                          Display_SMG_Bit(0,0xff);
+ 232   5                          Delay_SMG(100);
+ 233   5                          Display_SMG_Bit(1,0xff);
+ 234   5                          Delay_SMG(100);
+ 235   5                          }
+ 236   4                     else
+ 237   4                          {
+ 238   5                          Display_SMG_Bit(0,~Duanma[Init_Aralm[2]/16]);
+ 239   5                          Delay_SMG(100);
+ 240   5                          Display_SMG_Bit(1,~Duanma[Init_Aralm[2]%16]);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 5   
+
+ 241   5                          Delay_SMG(100);
+ 242   5                          }
+ 243   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 244   4                     Delay_SMG(100);
+ 245   4                     Display_SMG_Bit(3,~Duanma[Init_Aralm[1]/16]);
+ 246   4                     Delay_SMG(100);
+ 247   4                     Display_SMG_Bit(4,~Duanma[Init_Aralm[1]%16]);
+ 248   4                     Delay_SMG(100);
+ 249   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 250   4                     Delay_SMG(100);
+ 251   4                     Display_SMG_Bit(6,~Duanma[Init_Aralm[0]/16]);
+ 252   4                     Delay_SMG(100);
+ 253   4                     Display_SMG_Bit(7,~Duanma[Init_Aralm[0]%16]);
+ 254   4                     Delay_SMG(100);
+ 255   4                     Display_SMG_Bit(8,0x00);
+ 256   4                     Delay_SMG(100);
+ 257   4                     break;
+ 258   4                     }
+ 259   3      
+ 260   3                     case 1:
+ 261   3                     {    
+ 262   4                     Display_SMG_Bit(0,~Duanma[Init_Aralm[2]/16]);
+ 263   4                     Delay_SMG(100);
+ 264   4                     Display_SMG_Bit(1,~Duanma[Init_Aralm[2]%16]);
+ 265   4                     Delay_SMG(100);
+ 266   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 267   4                     Delay_SMG(100);
+ 268   4                     if (Blink_Bit == 0)
+ 269   4                          {
+ 270   5                          Display_SMG_Bit(3,0xff);
+ 271   5                          Delay_SMG(100);
+ 272   5                          Display_SMG_Bit(4,0xff);
+ 273   5                          Delay_SMG(100);
+ 274   5                          }
+ 275   4                     else
+ 276   4                          {
+ 277   5                          Display_SMG_Bit(3,~Duanma[Init_Aralm[1]/16]);
+ 278   5                          Delay_SMG(100);
+ 279   5                          Display_SMG_Bit(4,~Duanma[Init_Aralm[1]%16]);
+ 280   5                          Delay_SMG(100);
+ 281   5                          }
+ 282   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 283   4                     Delay_SMG(100);
+ 284   4                     Display_SMG_Bit(6,~Duanma[Init_Aralm[0]/16]);
+ 285   4                     Delay_SMG(100);
+ 286   4                     Display_SMG_Bit(7,~Duanma[Init_Aralm[0]%16]);
+ 287   4                     Delay_SMG(100);
+ 288   4                     Display_SMG_Bit(8,0x00);
+ 289   4                     Delay_SMG(100);
+ 290   4                     break;
+ 291   4                     }
+ 292   3      
+ 293   3                     case 2:
+ 294   3                     {    
+ 295   4                     Display_SMG_Bit(0,~Duanma[Init_Aralm[2]/16]);
+ 296   4                     Delay_SMG(100);
+ 297   4                     Display_SMG_Bit(1,~Duanma[Init_Aralm[2]%16]);
+ 298   4                     Delay_SMG(100);
+ 299   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 300   4                     Delay_SMG(100);
+ 301   4                     Display_SMG_Bit(3,~Duanma[Init_Aralm[1]/16]);
+ 302   4                     Delay_SMG(100);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 6   
+
+ 303   4                     Display_SMG_Bit(4,~Duanma[Init_Aralm[1]%16]);
+ 304   4                     Delay_SMG(100);
+ 305   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 306   4                     Delay_SMG(100);
+ 307   4                          if (Blink_Bit == 0)
+ 308   4                          {
+ 309   5                          Display_SMG_Bit(6,0xff);
+ 310   5                          Delay_SMG(100);
+ 311   5                          Display_SMG_Bit(7,0xff);
+ 312   5                          Delay_SMG(100);
+ 313   5                          }
+ 314   4                          else
+ 315   4                          {
+ 316   5                          Display_SMG_Bit(6,~Duanma[Init_Aralm[0]/16]);
+ 317   5                          Delay_SMG(100);
+ 318   5                          Display_SMG_Bit(7,~Duanma[Init_Aralm[0]%16]);
+ 319   5                          Delay_SMG(100);
+ 320   5                          Display_SMG_Bit(8,0x00);
+ 321   5                          Delay_SMG(100);
+ 322   5                          }
+ 323   4                     break;
+ 324   4                     }
+ 325   3                }
+ 326   2           }
+ 327   1      }
+ 328          
+ 329          //====================================================//
+ 330          
+ 331          //====================================================//Mode 3
+ 332          
+ 333          void Dispaly_Select_Timer()
+ 334          {
+ 335   1           if(Mode_Bit == 3)
+ 336   1           {
+ 337   2                switch(Timer_Bit)
+ 338   2                {
+ 339   3                     case 0:
+ 340   3                     {
+ 341   4                     if(Blink_Bit == 0)
+ 342   4                          {
+ 343   5                          Display_SMG_Bit(0,0xff);
+ 344   5                          Delay_SMG(100);
+ 345   5                          Display_SMG_Bit(1,0xff);
+ 346   5                          Delay_SMG(100);
+ 347   5                          }
+ 348   4                     else
+ 349   4                          {
+ 350   5                          Display_SMG_Bit(0,~Duanma[Init_Time[2]/16]);
+ 351   5                          Delay_SMG(100);
+ 352   5                          Display_SMG_Bit(1,~Duanma[Init_Time[2]%16]);
+ 353   5                          Delay_SMG(100);
+ 354   5                          }
+ 355   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 356   4                     Delay_SMG(100);
+ 357   4                     Display_SMG_Bit(3,~Duanma[Init_Time[1]/16]);
+ 358   4                     Delay_SMG(100);
+ 359   4                     Display_SMG_Bit(4,~Duanma[Init_Time[1]%16]);
+ 360   4                     Delay_SMG(100);
+ 361   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 362   4                     Delay_SMG(100);
+ 363   4                     Display_SMG_Bit(6,~Duanma[Init_Time[0]/16]);
+ 364   4                     Delay_SMG(100);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 7   
+
+ 365   4                     Display_SMG_Bit(7,~Duanma[Init_Time[0]%16]);
+ 366   4                     Delay_SMG(100);
+ 367   4                     Display_SMG_Bit(8,0x00);
+ 368   4                     Delay_SMG(100);
+ 369   4                     break;
+ 370   4                     }
+ 371   3      
+ 372   3                     case 1:
+ 373   3                     {    
+ 374   4                     Display_SMG_Bit(0,~Duanma[Init_Time[2]/16]);
+ 375   4                     Delay_SMG(100);
+ 376   4                     Display_SMG_Bit(1,~Duanma[Init_Time[2]%16]);
+ 377   4                     Delay_SMG(100);
+ 378   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 379   4                     Delay_SMG(100);
+ 380   4                     if (Blink_Bit == 0)
+ 381   4                          {
+ 382   5                          Display_SMG_Bit(3,0xff);
+ 383   5                          Delay_SMG(100);
+ 384   5                          Display_SMG_Bit(4,0xff);
+ 385   5                          Delay_SMG(100);
+ 386   5                          }
+ 387   4                     else
+ 388   4                          {
+ 389   5                          Display_SMG_Bit(3,~Duanma[Init_Time[1]/16]);
+ 390   5                          Delay_SMG(100);
+ 391   5                          Display_SMG_Bit(4,~Duanma[Init_Time[1]%16]);
+ 392   5                          Delay_SMG(100);
+ 393   5                          }
+ 394   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 395   4                     Delay_SMG(100);
+ 396   4                     Display_SMG_Bit(6,~Duanma[Init_Time[0]/16]);
+ 397   4                     Delay_SMG(100);
+ 398   4                     Display_SMG_Bit(7,~Duanma[Init_Time[0]%16]);
+ 399   4                     Delay_SMG(100);
+ 400   4                     Display_SMG_Bit(8,0x00);
+ 401   4                     Delay_SMG(100);
+ 402   4                     break;
+ 403   4                     }
+ 404   3      
+ 405   3                     case 2:
+ 406   3                     {    
+ 407   4                     Display_SMG_Bit(0,~Duanma[Init_Time[2]/16]);
+ 408   4                     Delay_SMG(100);
+ 409   4                     Display_SMG_Bit(1,~Duanma[Init_Time[2]%16]);
+ 410   4                     Delay_SMG(100);
+ 411   4                     Display_SMG_Bit(2,~Duanma[10]);
+ 412   4                     Delay_SMG(100);
+ 413   4                     Display_SMG_Bit(3,~Duanma[Init_Time[1]/16]);
+ 414   4                     Delay_SMG(100);
+ 415   4                     Display_SMG_Bit(4,~Duanma[Init_Time[1]%16]);
+ 416   4                     Delay_SMG(100);
+ 417   4                     Display_SMG_Bit(5,~Duanma[10]);
+ 418   4                     Delay_SMG(100);
+ 419   4                          if (Blink_Bit == 0)
+ 420   4                          {
+ 421   5                          Display_SMG_Bit(6,0xff);
+ 422   5                          Delay_SMG(100);
+ 423   5                          Display_SMG_Bit(7,0xff);
+ 424   5                          Delay_SMG(100);
+ 425   5                          }
+ 426   4                          else
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 8   
+
+ 427   4                          {
+ 428   5                          Display_SMG_Bit(6,~Duanma[Init_Time[0]/16]);
+ 429   5                          Delay_SMG(100);
+ 430   5                          Display_SMG_Bit(7,~Duanma[Init_Time[0]%16]);
+ 431   5                          Delay_SMG(100);
+ 432   5                          Display_SMG_Bit(8,0x00);
+ 433   5                          Delay_SMG(100);
+ 434   5                          }
+ 435   4                     break;
+ 436   4                     }
+ 437   3                }
+ 438   2           }
+ 439   1      }
+ 440          
+ 441          //====================================================//
+ 442          
+ 443          //====================================================//keyboard
+ 444          
+ 445          void Scan_key()
+ 446          {
+ 447   1      //====================================================//S7: Data  &&  Start Stopwatch  && stop Stopwatch &
+             -&  Add aralm clock  &&  Time Bit reset && close Buzzer
+ 448   1           if(S7 == 0 )
+ 449   1           {
+ 450   2           Delay_Scan(200);
+ 451   2                if(S7 == 0)
+ 452   2                {
+ 453   3                while(S7 == 0)
+ 454   3                {
+ 455   4                Dispaly_Select_Timer();
+ 456   4                Display_Normal_Time();   
+ 457   4                Display_Normal_Data();
+ 458   4                Display_Normal_Aralm();
+ 459   4                Dispaly_Select_aralm();
+ 460   4                Display_Stop_Watch();
+ 461   4                }
+ 462   3                
+ 463   3                     if(Timer_Bit == 0 && Mode_Bit == 2)
+ 464   3                     {
+ 465   4                     Init_Aralm[2]++;
+ 466   4                     }
+ 467   3                     else if(Timer_Bit == 1 && Mode_Bit == 2)
+ 468   3                     {
+ 469   4                     Init_Aralm[1]++;
+ 470   4                     }
+ 471   3                     else if(Timer_Bit == 2 && Mode_Bit == 2)
+ 472   3                     {
+ 473   4                     Init_Aralm[0]++;
+ 474   4                     }
+ 475   3                
+ 476   3                     if(Timer_Bit == 0 && Mode_Bit == 3)
+ 477   3                     {
+ 478   4                     Write_Ds1302_Byte(0x8e,0x00);
+ 479   4                     Write_Ds1302_Byte( DS1302_Write[2],0x00);
+ 480   4                     Write_Ds1302_Byte(0x8e,0x80);
+ 481   4                     }
+ 482   3                     
+ 483   3                     else if(Timer_Bit == 1 && Mode_Bit == 3)
+ 484   3                     {
+ 485   4                     Write_Ds1302_Byte(0x8e,0x00);
+ 486   4                     Write_Ds1302_Byte( DS1302_Write[1],0x00);
+ 487   4                     Write_Ds1302_Byte(0x8e,0x80);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 9   
+
+ 488   4                     }
+ 489   3                     else if(Timer_Bit == 2 && Mode_Bit == 3)
+ 490   3                     {
+ 491   4                     Write_Ds1302_Byte(0x8e,0x00);
+ 492   4                     Write_Ds1302_Byte( DS1302_Write[0],0x00);
+ 493   4                     Write_Ds1302_Byte(0x8e,0x80);
+ 494   4                     }
+ 495   3                     
+ 496   3                     if(Mode_Bit == 1)
+ 497   3                     {
+ 498   4                     Stopwatch_Bit++;
+ 499   4                          if(Stopwatch_Bit == 2)
+ 500   4                          {
+ 501   5                          Stopwatch_Bit = 0;
+ 502   5                          }
+ 503   4                     
+ 504   4                     
+ 505   4                     }
+ 506   3                     if(Buzzer_Bit == 1)
+ 507   3                     {
+ 508   4                       Buzzer_Bit = 0;
+ 509   4                     }
+ 510   3                }         
+ 511   2           }
+ 512   1           
+ 513   1      //====================================================//
+ 514   1      
+ 515   1      //====================================================//S6: aralm clock  &&  Select time Bit  &&  Select a
+             -ralm clock Bit  && reset Stopwatch     
+ 516   1           if(S6 == 0)
+ 517   1           {
+ 518   2           Delay_Scan(200);
+ 519   2                if(S6 == 0)
+ 520   2                {
+ 521   3                while(S6 == 0)
+ 522   3                {
+ 523   4                Dispaly_Select_Timer();
+ 524   4                Display_Normal_Time();   
+ 525   4                Display_Normal_Data();
+ 526   4                Display_Normal_Aralm();
+ 527   4                Dispaly_Select_aralm();
+ 528   4                Display_Stop_Watch();
+ 529   4                }
+ 530   3                          Timer_Bit++;
+ 531   3                     if(Timer_Bit == 3)
+ 532   3                     {
+ 533   4                     Timer_Bit = 0;
+ 534   4                     }
+ 535   3                     if(Mode_Bit == 1 && Stopwatch_Bit == 0)
+ 536   3                     {
+ 537   4                          Stop_Watch_Min = 0;
+ 538   4                          Stop_Watch_Second = 0;
+ 539   4                          Stop_Watch_Millisecond = 0;
+ 540   4                     }              
+ 541   3                }         
+ 542   2           }
+ 543   1      
+ 544   1      //====================================================//S5: Select Mode
+ 545   1           
+ 546   1           if(S5 == 0)
+ 547   1           {
+ 548   2           Delay_Scan(200);
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 10  
+
+ 549   2                if(S5 == 0)
+ 550   2                {
+ 551   3                while(S5 == 0)
+ 552   3                {
+ 553   4                Dispaly_Select_Timer();
+ 554   4                Display_Normal_Time();   
+ 555   4                Display_Normal_Data();
+ 556   4                Display_Normal_Aralm();
+ 557   4                Dispaly_Select_aralm();
+ 558   4                Display_Stop_Watch();
+ 559   4                }
+ 560   3                Timer_Bit = 2;
+ 561   3                Mode_Bit++;
+ 562   3                     if(Mode_Bit == 4)
+ 563   3                     {
+ 564   4                     Mode_Bit = 0;
+ 565   4                     }
+ 566   3                }         
+ 567   2           }
+ 568   1           
+ 569   1      //====================================================//
+ 570   1           
+ 571   1      }
+ 572          
+ 573          //====================================================//
+ 574          
+ 575          //====================================================//  Timer0
+ 576          
+ 577          void Init_Timer0()
+ 578          {
+ 579   1      TMOD = 0x01;
+ 580   1      TH0 = (65535 - 50000) / 256;
+ 581   1      TL0 = (65535 - 50000) % 256;
+ 582   1      EA = 1;
+ 583   1      ET0 = 1;
+ 584   1      TR0 = 1;
+ 585   1      }
+ 586          
+ 587          void Service_Timer0() interrupt 1
+ 588          {
+ 589   1      TH0 = (65535 - 50000) / 256;
+ 590   1      TL0 = (65535 - 50000) % 256;
+ 591   1      Count++;
+ 592   1           if(Stopwatch_Bit == 1)
+ 593   1           {
+ 594   2           Stop_Watch_Millisecond++;
+ 595   2           }
+ 596   1           if(Stop_Watch_Millisecond == 20)
+ 597   1           {
+ 598   2           Stop_Watch_Millisecond = 0;
+ 599   2           Stop_Watch_Second++;
+ 600   2                if(Stop_Watch_Second == 60)
+ 601   2                {
+ 602   3                Stop_Watch_Second = 0;
+ 603   3                Stop_Watch_Min++;
+ 604   3                }
+ 605   2           }
+ 606   1           
+ 607   1           if(Count == 20)
+ 608   1           {
+ 609   2           Blink_Bit = ~Blink_Bit;
+ 610   2           Count = 0;     
+C51 COMPILER V9.57.0.0   ______                                                            12/12/2021 12:10:41 PAGE 11  
+
+ 611   2           }
+ 612   1      }
+ 613          
+ 614          //====================================================//
+ 615          
+ 616          //====================================================//Buzzer
+ 617          
+ 618          void Buzzer()
+ 619          {
+ 620   1           if(Init_Time[0] ==Init_Aralm[0] && Init_Time[1] ==Init_Aralm[1] && Init_Time[2] ==Init_Aralm[2])
+ 621   1           {
+ 622   2                Buzzer_Bit = 1;
+ 623   2           }
+ 624   1           if(Buzzer_Bit == 1)
+ 625   1           {
+ 626   2           XBYTE[0xa000] = 0x40;
+ 627   2           XBYTE[0x0000] = 0x00;
+ 628   2           }
+ 629   1           else if(Buzzer_Bit == 0)
+ 630   1           {
+ 631   2           XBYTE[0xa000] = 0x00;
+ 632   2           XBYTE[0x0000] = 0x00;
+ 633   2           }
+ 634   1      }
+ 635          
+ 636          //====================================================//  
+ 637          
+ 638          void main()
+ 639          {
+ 640   1      Init_DS1302();
+ 641   1      Init_Timer0();
+ 642   1      Init_System();
+ 643   1           while(1)
+ 644   1           {
+ 645   2           Display_Normal_Aralm();
+ 646   2           Dispaly_Select_Timer();
+ 647   2           Display_Normal_Time();   
+ 648   2           Display_Normal_Data();
+ 649   2           Dispaly_Select_aralm();
+ 650   2           Display_Stop_Watch();
+ 651   2           Scan_key();
+ 652   2           Read_Ds1302();
+ 653   2           Buzzer();
+ 654   2           }
+ 655   1      }
+ 656               
+ 657               
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2104    ----
+   CONSTANT SIZE    =     25    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     28       6
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
